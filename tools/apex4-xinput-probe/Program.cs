@@ -6,14 +6,27 @@ using Microsoft.Win32.SafeHandles;
 // Experimental transport probe. Uses an already-running Flydigi filter only;
 // never installs, starts, stops or removes a driver, or changes saved profiles.
 if (!OperatingSystem.IsWindows()) return 1;
-if (args.Any(a => a is not "--identify" and not "--test-rt"))
+if (args.Length == 1 && args[0] == "--self-test-motion") return MotionCapture.SelfTest();
+if (args.Any(a => a is not "--identify" and not "--test-rt" and not "--capture-motion") ||
+    (args.Contains("--test-rt") && args.Contains("--capture-motion")))
 {
-    Console.Error.WriteLine("Usage: Apex4XInputProbe [--identify] [--test-rt]");
+    Console.Error.WriteLine("Usage: Apex4XInputProbe [--identify] [--test-rt | --capture-motion]");
     return 1;
 }
 using var identity = WindowsIdentity.GetCurrent();
 bool elevated = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-Console.WriteLine("probe_version=3 elevated=" + elevated + " system=" + identity.IsSystem);
+Console.WriteLine("probe_version=4 elevated=" + elevated + " system=" + identity.IsSystem);
+if (args.Contains("--capture-motion"))
+{
+    int slots = 0;
+    for (uint slot = 0; slot < 4; slot++)
+        if (Native.XInputGetState(slot, new byte[32]) == 0) slots++;
+    if (slots != 1)
+    {
+        Console.Error.WriteLine("Motion capture requires exactly one visible XInput controller. Stop the bridge and connect only your APEX 4.");
+        return 12;
+    }
+}
 // Both observed IOCTLs require read/write access. GENERIC_ALL additionally
 // requests unrelated rights (such as WRITE_DAC) that the device ACL may deny.
 using var device = Native.CreateFileW(@"\\.\XboxFilter", 0xC0000000, 0, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
@@ -34,7 +47,7 @@ if (!Native.DeviceIoControl(device, 0xC07FE008, null, 0, writable, 4, out _, Int
     return 3;
 }
 Console.WriteLine("filter_open=true can_write=" + (BitConverter.ToUInt32(writable) != 0));
-if (!args.Contains("--identify") && !args.Contains("--test-rt")) return 0;
+if (!args.Contains("--identify") && !args.Contains("--test-rt") && !args.Contains("--capture-motion")) return 0;
 if (BitConverter.ToUInt32(writable) == 0)
 {
     Console.Error.WriteLine("The filter has no selected controller. No command sent.");
@@ -101,6 +114,7 @@ using (port)
             Console.WriteLine($"device_type={report[16]} firmware={report[22] >> 4}.{report[22] & 15}.{report[21] >> 4}.{report[21] & 15} connection={(report[25] == 1 ? "USB" : "dongle")}");
             bool apex4 = report[16] is 84 or 86 or 87 or 92 or 93 or 102 or 103 or 104;
             Console.WriteLine("apex4_identity=" + apex4);
+            if (apex4 && args.Contains("--capture-motion")) return MotionCapture.Run(port);
             if (apex4 && args.Contains("--test-rt"))
             {
                 // The filter selects a global target. Refuse ambiguous setups.
