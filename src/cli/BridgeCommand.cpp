@@ -22,6 +22,7 @@
 #include "dualsense/TouchpadGestureProfile.h"
 #include "flydigi/Apex4Input.h"
 #include "flydigi/Apex4Protocol.h"
+#include "flydigi/Apex4XInputProtocol.h"
 #include "flydigi/Apex5Device.h"
 #include "flydigi/Apex5Protocol.h"
 #include "platform/HidTransport.h"
@@ -176,6 +177,7 @@ int commandBridgeTriggers(int argc, char** argv) {
     startup.enter("calibration");
     const bool apex5 = device->identity() && device->identity()->isApex5();
     const bool apex4 = device->identity() && device->identity()->isApex4();
+    const bool apex4XInput = apex4 && asb::flydigi::isApex4XInputCandidate(device->info());
     const std::string profileModelName = apex6Pro ? "Apex 6 Pro" : "Apex 5";
     const auto verifiedCalibrationModel = apex4 ? "apex4" : apex5 ? "apex5" : apex6Pro ? "apex6" : "";
     if (!applyControllerCalibration(options, verifiedCalibrationModel, error)) {
@@ -206,7 +208,10 @@ int commandBridgeTriggers(int argc, char** argv) {
     }
     const auto apex4TriggerCapability =
         asb::flydigi::classifyApex4TriggerInterface(device->info());
-    if (apex4) {
+    if (apex4XInput) {
+        std::cout << "Apex 4 transport: XInput controls + Flydigi filter feedback.\n"
+                  << "Gyro forwarding is unavailable in this experimental XInput path.\n";
+    } else if (apex4) {
         const auto capabilityName =
             apex4TriggerCapability ==
                     asb::flydigi::Apex4TriggerInterfaceCapability::Full64Byte
@@ -1472,7 +1477,7 @@ int commandBridgeTriggers(int argc, char** argv) {
         const auto inputObservedAt = std::chrono::steady_clock::now();
         if (inputStatus == asb::platform::PhysicalInputStatus::State) {
             tunePhysicalInput(input);
-            if (apex4 && apex4GyroValidation.observe(input, inputObservedAt)) {
+            if (apex4 && !apex4XInput && apex4GyroValidation.observe(input, inputObservedAt)) {
                 std::cerr << "WARNING: [bridge] APEX 4 motion sensors have reported no data yet. "
                           << "DualSense gyro aiming needs the gyro enabled in the active "
                           << "Flydigi Space Station profile (Gyro tab); motion data is only "

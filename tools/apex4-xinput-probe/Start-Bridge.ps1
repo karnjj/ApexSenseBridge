@@ -19,6 +19,7 @@ Read-Host 'Press Enter to start'
 $savedErrorPreference = $ErrorActionPreference
 $ErrorActionPreference = 'Continue' # Native stderr warnings must not abort cleanup.
 & $engine bridge-triggers --seconds 180 --reattach-seconds 0 --virtual-backend integrated --rumble --trigger-strength 50 --vibration-strength 50 2>&1 |
+    ForEach-Object { $_.ToString() } |
     Tee-Object -FilePath $log
 $engineExit = $LASTEXITCODE
 $ErrorActionPreference = $savedErrorPreference
