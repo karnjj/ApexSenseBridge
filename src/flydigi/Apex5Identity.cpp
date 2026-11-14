@@ -132,6 +132,16 @@ std::optional<Apex5Identity> Apex5Identity::parseApex6Reply(
     return identity;
 }
 
+std::optional<Apex5Identity> Apex5Identity::parseApex4XInputReply(
+    std::span<const std::uint8_t> report) {
+    if (report.size() != 32 || (report[14] != 0xA5 && report[14] != 0x5A) ||
+        report[15] != 0x10) return std::nullopt;
+    const auto firmware = static_cast<std::uint16_t>(report[21] |
+        static_cast<std::uint16_t>(report[22]) << 8U);
+    return Apex5Identity(ApexProtocol::LegacyV1, report[16], report[25],
+                         0, false, firmware);
+}
+
 bool Apex5Identity::isApex4DeviceType(std::uint8_t deviceType) noexcept {
     return std::find(kApex4DeviceTypes.begin(), kApex4DeviceTypes.end(), deviceType) !=
            kApex4DeviceTypes.end();

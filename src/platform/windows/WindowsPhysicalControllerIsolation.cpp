@@ -16,6 +16,7 @@
 #include "platform/PhysicalControllerIsolation.h"
 
 #include "flydigi/Apex4Protocol.h"
+#include "flydigi/Apex4XInputProtocol.h"
 #include "flydigi/Apex5Device.h"
 #include "flydigi/Apex5Protocol.h"
 #include "platform/HidTransport.h"
@@ -1270,6 +1271,8 @@ bool apexGameDevicePaths(const HidDeviceInfo& apexInterface,
                  : normalized.find(L"&IG_") != std::wstring::npos);
         const bool usbGameInterface = normalized.starts_with(L"USB\\") &&
             (normalized.find(L"&MI_00") != std::wstring::npos ||
+             (flydigi::isApex4XInputCandidate(apexInterface) &&
+              normalized.find(L"&IG_") != std::wstring::npos) ||
              apex4AuxiliaryInput);
         if (hidGamepad || usbGameInterface) {
             if (!containsCaseInsensitive(paths, instance)) paths.push_back(instance);

@@ -1,0 +1,22 @@
+name: Build experimental APEX 4 XInput
+on:
+  push:
+    branches: [experimental/apex4-xinput]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: cmake -S . -B build-xinput -G "Visual Studio 17 2022" -A x64
+      - run: cmake --build build-xinput --config Release --parallel --target ApexSenseBridge ApexSenseBridgeTests ApexSenseBridgeIdentityTests ApexSenseBridgeApex4XInputTests
+      - run: ctest --test-dir build-xinput -C Release --output-on-failure -R "^(protocol|identity_guard|apex4_xinput)$"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Apex4-XInput-engine
+          path: build-xinput/Release/ApexSenseBridge.exe
+          if-no-files-found: error

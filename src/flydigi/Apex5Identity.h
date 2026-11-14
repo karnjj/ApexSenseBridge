@@ -24,6 +24,8 @@ public:
         std::span<const std::uint8_t> report);
     [[nodiscard]] static std::optional<Apex5Identity> parseApex4Reply(
         std::span<const std::uint8_t> report);
+    [[nodiscard]] static std::optional<Apex5Identity> parseApex4XInputReply(
+        std::span<const std::uint8_t> report);
     [[nodiscard]] static std::optional<Apex5Identity> parseApex6Reply(
         std::span<const std::uint8_t> report);
     [[nodiscard]] static bool isApex4DeviceType(std::uint8_t deviceType) noexcept;

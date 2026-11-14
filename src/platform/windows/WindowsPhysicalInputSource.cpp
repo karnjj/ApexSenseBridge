@@ -11,6 +11,7 @@
 
 #include "flydigi/Apex4Input.h"
 #include "flydigi/Apex4Protocol.h"
+#include "flydigi/Apex4XInputProtocol.h"
 #include "flydigi/Apex5Identity.h"
 #include "flydigi/Apex5Input.h"
 #include "flydigi/Apex5Protocol.h"
@@ -1351,6 +1352,17 @@ std::unique_ptr<PhysicalInputSource> openPhysicalInputSource(
     const HidDeviceInfo& apexVendorInterface,
     std::optional<unsigned int> requestedXInputIndex,
     std::string& error) {
+    if (flydigi::isApex4XInputCandidate(apexVendorInterface)) {
+        const auto slots = connectedXInputGamepads();
+        if (slots.size() != 1 || (requestedXInputIndex && *requestedXInputIndex != slots.front())) {
+            error = "Experimental APEX 4 XInput requires one unambiguous XInput slot.";
+            return {};
+        }
+        auto pad = openXInputGamepadForDevice(apexVendorInterface.vendorId,
+            apexVendorInterface.productId, slots.front(), error);
+        if (!pad) return {};
+        return std::make_unique<XInputPhysicalInputSource>(std::move(pad));
+    }
     if (!requestedXInputIndex) {
         if (flydigi::apex6::isProduct(
                 apexVendorInterface.vendorId, apexVendorInterface.productId)) {

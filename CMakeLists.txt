@@ -42,6 +42,7 @@ add_library(asb_core STATIC
     src/platform/XInputMapping.cpp
     src/flydigi/Apex4Input.cpp
     src/flydigi/Apex4Protocol.cpp
+    src/flydigi/Apex4XInputProtocol.cpp
     src/flydigi/Apex4WritePacing.cpp
     src/flydigi/Apex5Identity.cpp
     src/flydigi/Apex5Input.cpp
@@ -57,6 +58,7 @@ target_include_directories(asb_core PUBLIC src)
 if(WIN32)
     target_sources(asb_core PRIVATE
         src/platform/windows/WindowsHidTransport.cpp
+        src/platform/windows/WindowsApex4XInputTransport.cpp
         src/platform/windows/WindowsAudioEndpointProtection.cpp
         src/platform/windows/WindowsLibViiperVirtualDualSense.cpp
         src/platform/windows/WindowsVirtualDualSense.cpp
@@ -157,6 +159,9 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
+    add_executable(ApexSenseBridgeApex4XInputTests tests/test_apex4_xinput.cpp)
+    target_link_libraries(ApexSenseBridgeApex4XInputTests PRIVATE asb_core)
+    add_test(NAME apex4_xinput COMMAND ApexSenseBridgeApex4XInputTests)
     add_executable(ApexSenseBridgeTriggerPositionMarkersTests tests/test_trigger_position_markers.cpp)
     target_include_directories(ApexSenseBridgeTriggerPositionMarkersTests PRIVATE src)
     add_test(NAME trigger_position_markers COMMAND ApexSenseBridgeTriggerPositionMarkersTests)

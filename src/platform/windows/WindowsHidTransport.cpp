@@ -2,6 +2,8 @@
 
 #include "platform/HidTransport.h"
 #include "platform/windows/WindowsOverlappedIo.h"
+#include "platform/windows/WindowsApex4XInputTransport.h"
+#include "flydigi/Apex4XInputProtocol.h"
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -595,6 +597,7 @@ std::vector<HidDeviceInfo> enumerateHidDevices(std::string& error, HidStringQuer
 }
 
 HidTransport* createHidTransport(const HidDeviceInfo& info, std::string& error) {
+    if (flydigi::isApex4XInputCandidate(info)) return createApex4XInputTransport(info, error);
     HANDLE handle = CreateFileW(info.path.c_str(), GENERIC_READ | GENERIC_WRITE,
                                 FILE_SHARE_READ | FILE_SHARE_WRITE,
                                 nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);

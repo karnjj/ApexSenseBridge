@@ -2,6 +2,7 @@
 #include "flydigi/Apex6Lighting.h"
 
 #include "flydigi/Apex4Protocol.h"
+#include "flydigi/Apex4XInputProtocol.h"
 #include "flydigi/Apex5Protocol.h"
 #include "flydigi/Apex6Protocol.h"
 
@@ -229,7 +230,10 @@ std::vector<HidDeviceInfo> Apex5Device::findCandidates(std::string& error) {
         const bool apex5 = info.vendorId == kVendorId &&
                            isControllerProduct(info.productId) &&
                            info.usagePage == kVendorUsagePage && !apex6Pro;
-        return apex5 || apex6Pro || isApex4Candidate(info);
+        const auto* experimental = std::getenv("ASB_APEX4_XINPUT");
+        const bool xinputEnabled = experimental && std::string_view(experimental) == "1";
+        return apex5 || apex6Pro || isApex4Candidate(info) ||
+               (xinputEnabled && isApex4XInputCandidate(info));
     });
 
     return candidates;
@@ -278,8 +282,9 @@ const std::optional<Apex5Identity>& Apex5Device::identity() const noexcept {
 }
 
 bool Apex5Device::usesApex4Protocol() const noexcept {
-    return isOpen() && isApex4Product(
-        transport_->info().vendorId, transport_->info().productId);
+    return isOpen() && (isApex4Product(
+        transport_->info().vendorId, transport_->info().productId) ||
+        isApex4XInputCandidate(transport_->info()));
 }
 
 bool Apex5Device::verifyIdentity(std::string& error,
@@ -327,7 +332,8 @@ bool Apex5Device::verifyIdentity(std::string& error,
     // streaming input, especially over the 2.4 GHz receiver. SDL retries this
     // read-only request up to 30 times; keep the same roughly three-second
     // retry window so a second process opening the dongle is reliable too.
-    constexpr auto kApex4AttemptTimeout = std::chrono::milliseconds(100);
+    const auto kApex4AttemptTimeout = std::chrono::milliseconds(
+        isApex4XInputCandidate(transport_->info()) ? 600 : 100);
     constexpr auto kApex5AttemptTimeout = std::chrono::milliseconds(600);
     constexpr std::size_t kMaximumReplies = 4096;
     // During controller wake, another short-lived detector can consume the
@@ -400,7 +406,9 @@ bool Apex5Device::verifyIdentity(std::string& error,
                 }
             }
             const auto parsed = apex4
-                ? Apex5Identity::parseApex4Reply(bytes)
+                ? (isApex4XInputCandidate(transport_->info())
+                       ? Apex5Identity::parseApex4XInputReply(bytes)
+                       : Apex5Identity::parseApex4Reply(bytes))
                 : (apex6Pro ? Apex5Identity::parseApex6Reply(bytes)
                             : Apex5Identity::parseReply(bytes));
             if (!parsed) continue;
