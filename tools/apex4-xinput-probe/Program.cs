@@ -15,7 +15,7 @@ if (args.Any(a => a is not "--identify" and not "--test-rt" and not "--capture-m
 }
 using var identity = WindowsIdentity.GetCurrent();
 bool elevated = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-Console.WriteLine("probe_version=4 elevated=" + elevated + " system=" + identity.IsSystem);
+Console.WriteLine("probe_version=5 elevated=" + elevated + " system=" + identity.IsSystem);
 if (args.Contains("--capture-motion"))
 {
     int slots = 0;
@@ -114,7 +114,7 @@ using (port)
             Console.WriteLine($"device_type={report[16]} firmware={report[22] >> 4}.{report[22] & 15}.{report[21] >> 4}.{report[21] & 15} connection={(report[25] == 1 ? "USB" : "dongle")}");
             bool apex4 = report[16] is 84 or 86 or 87 or 92 or 93 or 102 or 103 or 104;
             Console.WriteLine("apex4_identity=" + apex4);
-            if (apex4 && args.Contains("--capture-motion")) return MotionCapture.Run(port);
+            if (apex4 && args.Contains("--capture-motion")) return MotionCapture.Run(port, device, report[27]);
             if (apex4 && args.Contains("--test-rt"))
             {
                 // The filter selects a global target. Refuse ambiguous setups.

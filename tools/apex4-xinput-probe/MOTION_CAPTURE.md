@@ -16,12 +16,20 @@ applied to these XInput bytes without hardware evidence.
 3. Right-click `Capture-Motion.cmd` > Run as administrator.
 4. After identification, press Enter and follow the timed instructions for
    stillness, yaw (level left/right turning), pitch (front edge up/down), roll
-   (left/right grip up), and stick-only motion. There are still periods between
-   rotations. Total recording time is approximately 48 seconds.
+   (left/right grip up), and stick-only motion. A second set of rotations holds
+   LT down to test conditional activation. Total recording time is about 76 seconds.
 5. Share `motion-capture.csv` and `motion-summary.json` from the extracted folder.
 
-Use the current profile unchanged for the first recording. The tool sends only
-the read-only identity request, then passively receives filter reports. It does
+The updated capture first reads the profile slot reported by the identity reply
+with the read-only `A5 21` command. It accepts only complete, known-version
+profile data and exports just the numeric motion settings. Profile names,
+macros and the remaining blob are not saved. It does not enumerate/switch slots.
+The slot number must be checked against the profile selected on the controller
+or in Space Station; an unavailable snapshot does not prove gyro is Off.
+
+If that slot reports motion mapping Off, the tool stops without another rotation
+recording and writes `motion-summary.json` (exit 24). If the slot is enabled or
+its settings are unknown, it proceeds with the guided capture. The tool does
 not enable raw routing, change profiles/modes, hide devices or set trigger effects.
 
 Only recognized ordinary 32-byte input reports (`00 14`, excluding vendor reply
@@ -34,6 +42,14 @@ are not overwritten; move them aside before a repeat capture.
 A zero-movement result may mean motion is disabled or unavailable in this
 profile/path. It is not proof of a broken gyro. We will inspect the capture
 before deciding whether another routing command or profile setup is needed.
+
+First capture result: all eight phases completed with zero timeouts. Every
+saved sample had bytes 14-16 and 27-31 equal to zero; stick movement was recorded
+in the stick-only phase. No gyro decoder was inferred from that capture.
+
+Independent protocol observations describe profile-gated motion and two packed
+12-bit channels in the three Xbox bytes; these are hypotheses to check on this unit:
+https://github.com/uiltonlopes/flydigi-space-station-mac/blob/main/docs/protocol.md#9-live-input-in-dinput-mode-report-id-4
 
 `--self-test-motion` checks packet classification, length validation and rejection
 of identity/vendor frames without opening a controller or driver.
