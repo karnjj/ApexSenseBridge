@@ -1,8 +1,8 @@
 # Experimental APEX 4 XInput transport
 
-Status: the standalone filter probe identified DeviceType 84, firmware 6.8.3.0
-over the 2.4 GHz dongle. The owner confirmed a low RT Race effect was felt and
-returned to normal. Full bridge/gameplay and disconnect cleanup remain unvalidated.
+Status: experimental, opt-in XInput support with hardware validation on an APEX 4
+(DeviceType 84, firmware 6.8.3.0) over the 2.4 GHz dongle. Gyroscope support is
+outside this change. Wired USB and other firmware/units remain unvalidated.
 
 Set `ASB_APEX4_XINPUT=1` for the experimental engine process. With no variable,
 APEX 4 discovery remains DInput-only. The filter input port requires elevation.
@@ -23,10 +23,35 @@ commands. Physical buttons/sticks and independent LT/RT come from XInput.
 Gyroscope forwarding is not implemented in this path.
 
 The physical controller's real HID/USB instance IDs and container are retained
-for HidHide. Its XInput `IG_` child is included in isolation, and failures remain
-fatal. Use `--reattach-seconds 0` for initial tests; power-cycle recovery has not
+for HidHide. Both its synthesized HID/`IG_` children and the verified `xusb22`
+parent in the same controller container are included in isolation. Startup fails
+if the parent cannot be verified. Use `--reattach-seconds 0` for initial tests; power-cycle recovery has not
 been validated. Do not unplug the pad or terminate the process during a test.
 
-The first complete bridge test must verify buttons, simultaneous LT/RT, adaptive
-effects, rumble, no duplicate physical inputs, and return to normal after exit.
-Successful codec/identity tests and an engine build do not establish gameplay.
+## Validation recorded on 2026-11-14
+
+- The identity probe successfully identified the controller in XInput mode.
+- The owner confirmed temporary RT resistance and return to normal.
+- A three-minute bridge session read buttons, sticks and simultaneous LT/RT,
+  ended with exit code 0, neutralized virtual input and reported trigger reset.
+- The owner confirmed the portable Tray's controller tests worked.
+- After the parent-isolation fix, a fresh non-whitelisted process reported no
+  visible XInput controller while the bridge was active. Applications holding
+  older handles still need to be restarted after activation.
+- The owner confirmed adaptive-trigger effects from https://ds.daidr.me/ through
+  the virtual DualSense and bridge to the physical APEX 4. This exercises the
+  full feedback path, unlike the Tray's direct controller tests.
+- The owner reported working controls and vibration in Wuthering Waves. Its
+  ordinary gameplay did not establish adaptive-trigger resistance.
+- Rocket League vibration did not work through the virtual DualSense in the
+  reported test, but worked with the bridge off using native XInput. That
+  compatibility issue is unresolved; its catalogue entry requires a separate
+  manual fix for adaptive triggers.
+
+Windows CI built the engine and passed `protocol`, `identity_guard`,
+`apex4_xinput` and `physical_isolation_space_station_guard`. These checks and
+the observations above are not validation of every game or trigger mode.
+
+Remaining work includes gyro forwarding, repeatable reconnect/crash recovery
+tests, cold-start filter target selection, wired transport validation and
+broader controller/firmware coverage. Existing DInput support remains available.
