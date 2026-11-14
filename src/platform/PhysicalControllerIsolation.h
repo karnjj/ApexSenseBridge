@@ -67,6 +67,10 @@ private:
 
 namespace detail {
 
+// Called only for nodes in the selected controller's verified container.
+[[nodiscard]] bool matchesApex4XInputRoot(const HidDeviceInfo& selected,
+    std::wstring_view rootInstance, std::wstring_view service);
+
 // Kept separate from registry enumeration so the third-party application
 // identity guard can be unit-tested without changing HidHide state.
 [[nodiscard]] bool matchesFlydigiSpaceStationInstall(

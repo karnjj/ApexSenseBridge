@@ -1239,6 +1239,8 @@ bool apexGameDevicePaths(const HidDeviceInfo& apexInterface,
     const auto expectedId = id.str();
     const bool apex4DInput = flydigi::isApex4Product(
         apexInterface.vendorId, apexInterface.productId);
+    const bool apex4XInput = flydigi::isApex4XInputCandidate(apexInterface);
+    bool foundXInputRoot = !apex4XInput;
     bool foundHidGamepad = false;
     bool foundUsbGameInterface = false;
     bool foundHidAuxiliaryInput = !apex4DInput;
@@ -1256,6 +1258,13 @@ bool apexGameDevicePaths(const HidDeviceInfo& apexInterface,
         const auto instance = deviceInstanceId(devices.get(), info);
         const auto normalized = upper(instance);
         if (normalized.find(expectedId) == std::wstring::npos) continue;
+        // Hiding the synthesized HID/IG children does not cover native XInput.
+        // HidHide identifies the xusb22 parent as this gamepad's base container.
+        // The container comparison above and exact root/service guard below
+        // prevent selecting a sibling controller, USB hub, or VIIPER device.
+        const bool xinputRoot = apex4XInput && detail::matchesApex4XInputRoot(
+            apexInterface, instance, deviceNodeStringProperty(info.DevInst, DEVPKEY_Device_Service));
+        foundXInputRoot = foundXInputRoot || xinputRoot;
         const bool apex4Gamepad = apex4DInput &&
                                   normalized.find(L"&MI_00") != std::wstring::npos;
         // APEX 4 DInput also exposes MI_01 as a standard HID mouse. Leaving
@@ -1274,7 +1283,7 @@ bool apexGameDevicePaths(const HidDeviceInfo& apexInterface,
              (flydigi::isApex4XInputCandidate(apexInterface) &&
               normalized.find(L"&IG_") != std::wstring::npos) ||
              apex4AuxiliaryInput);
-        if (hidGamepad || usbGameInterface) {
+        if (hidGamepad || usbGameInterface || xinputRoot) {
             if (!containsCaseInsensitive(paths, instance)) paths.push_back(instance);
             foundHidGamepad = foundHidGamepad ||
                               (hidGamepad && (!apex4DInput || apex4Gamepad));
@@ -1286,6 +1295,10 @@ bool apexGameDevicePaths(const HidDeviceInfo& apexInterface,
             foundUsbAuxiliaryInput = foundUsbAuxiliaryInput ||
                                      (usbGameInterface && apex4AuxiliaryInput);
         }
+    }
+    if (!foundXInputRoot) {
+        error = "Could not verify the selected APEX 4 xusb22 parent; refusing partial XInput isolation.";
+        return false;
     }
     if (!foundHidGamepad || !foundUsbGameInterface ||
         !foundHidAuxiliaryInput || !foundUsbAuxiliaryInput) {
@@ -2085,6 +2098,15 @@ int TemporaryPhysicalControllerIsolation::watchAndRecover(
 }
 
 namespace detail {
+
+bool matchesApex4XInputRoot(const HidDeviceInfo& selected,
+    std::wstring_view rootInstance, std::wstring_view service) {
+    constexpr std::wstring_view prefix = L"USB\\VID_045E&PID_028E\\";
+    const auto normalized = upper(std::wstring(rootInstance));
+    return flydigi::isApex4XInputCandidate(selected) &&
+           equalsCaseInsensitive(service, L"xusb22") &&
+           normalized.starts_with(prefix) && normalized.size() > prefix.size();
+}
 
 bool matchesFlydigiSpaceStationInstall(
     std::wstring_view displayName,

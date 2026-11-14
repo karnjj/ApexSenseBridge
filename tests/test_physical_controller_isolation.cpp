@@ -10,6 +10,21 @@
 #include <vector>
 
 int main() {
+    asb::HidDeviceInfo selectedXInput{};
+    selectedXInput.vendorId = 0x045E;
+    selectedXInput.productId = 0x028E;
+    selectedXInput.usagePage = 1;
+    selectedXInput.usage = 5;
+    selectedXInput.product = L"Controller (Flydigi VADER3)";
+    using asb::platform::detail::matchesApex4XInputRoot;
+    assert(matchesApex4XInputRoot(selectedXInput, L"USB\\VID_045E&PID_028E\\FLYDIGI_VADER3", L"xusb22"));
+    assert(matchesApex4XInputRoot(selectedXInput, L"usb\\vid_045e&pid_028e\\device", L"XUSB22"));
+    assert(!matchesApex4XInputRoot(selectedXInput, L"USB\\VID_045E&PID_028E&IG_00\\child", L"xusb22"));
+    assert(!matchesApex4XInputRoot(selectedXInput, L"USB\\ROOT_HUB30\\hub", L"USBHUB3"));
+    assert(!matchesApex4XInputRoot(selectedXInput, L"USB\\VID_054C&PID_0CE6\\virtual", L"xusb22"));
+    assert(!matchesApex4XInputRoot(selectedXInput, L"USB\\VID_045E&PID_028E\\pad", L"USBHUB3"));
+    selectedXInput.product = L"Xbox 360 Controller";
+    assert(!matchesApex4XInputRoot(selectedXInput, L"USB\\VID_045E&PID_028E\\pad", L"xusb22"));
     using asb::platform::detail::matchesFlydigiSpaceStationInstall;
     using asb::platform::detail::matchesFlydigiVirtualGamepadTopology;
     using asb::platform::detail::matchesFlydigiVirtualGamepadRoot;
